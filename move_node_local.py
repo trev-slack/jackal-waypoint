@@ -16,6 +16,10 @@ class Node():
 		self.kp = 0.5
 		self.yaw = None
 		self.way_x = None
+		self.target_distance = 1000000
+		self.old_way_x = None
+		self.old_way_y = None
+
 
 	def findLoc(self, data):
 		self.x = data.pose.pose.position.x 
@@ -42,23 +46,31 @@ class Node():
 	def rotate(self):
 		command = Twist()
 		rospy.loginfo("target={} current={}".format(self.target_angle,self.yaw))
+		rospy.loginfo("remainder={}".format(self.target_angle - self.yaw))
 		command.angular.z = self.kp*(self.target_angle-self.yaw)
 		self.pub_vel.publish(command)
-		if abs(self.target_angle) - abs(self.yaw) <= 0.05:
-			return True
+		if self.target_angle < 0:
+			print("check less")
+			if self.target_angle - self.yaw >= -0.01:
+				print("return true")
+				return True
+		elif self.target_angle > 0:
+			if self.target_angle - self.yaw <= 0.01:
+				return True
 		else:
 			return False
 
 	def move(self):
+		old_distance = self.target_distance
 		#figure out how to get distance in local coords
-		way_x_rel = self.way_x + self.x
-		way_y_rel = self.way_y + self.y
+		way_x_rel = self.way_x + self.x_curr
+		way_y_rel = self.way_y + self.y_curr
 		self.target_distance = math.sqrt((way_x_rel-self.x)**2+(way_y_rel-self.y)**2)
 		command = Twist()
 		rospy.loginfo("distance to target={}".format(self.target_distance))
 		command.linear.x = self.kp*(self.target_distance)
 		self.pub_vel.publish(command)
-		if self.target_distance < 0.05:
+		if self.target_distance < 0.05 or old_distance<self.target_distance:
 			return True
 		else: 
 			return False
@@ -69,19 +81,30 @@ class Node():
 		rospy.Subscriber('/Waypoint', Waypoint, self.getAngle)
 		self.pub_vel = rospy.Publisher('cmd_vel',Twist, queue_size = 1)
 		rate = rospy.Rate(60)
+		flag_format = False
 		while not rospy.is_shutdown():
 			if self.yaw == None:
-				print("Waiting for Odometry\n")
+				print("Waiting for Odometry.\n")
 				continue
-			if self.way_x == None:
-				print("Waiting for Waypoint\n")
+			elif self.way_x == None:
+				print("Waiting for Waypoint.\n")
 				continue
-			check = self.rotate()
-			if check:
-				check2 = self.move()
-				if check2:
-					print("At Waypoint\n")
-					break
+			if self.old_way_x == self.way_x and self.old_way_y == self.way_y:
+				if flag_format == False:
+					print("Waiting for new waypoint.\n")
+					flag_format = True
+				continue
+			flag_rotate = self.rotate()
+			if flag_rotate:
+				flag_move = False
+				self.x_curr = self.x
+				self.y_curr = self.y
+				while not flag_move and not rospy.is_shutdown():
+					flag_move = self.move()
+				print("At Waypoint\n")
+				self.old_way_x = self.way_x
+				self.old_way_y = self.way_y
+				self.main()
 			rate.sleep()
 		rospy.spin()
 
