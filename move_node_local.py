@@ -42,7 +42,10 @@ class Node():
 		self.way_x = data.x
 		self.way_y = data.y
 		#get angle to waypoint 
-		self.target_angle = math.atan2(self.way_y,self.way_x)
+		self.way_x_rel = self.way_x-self.x
+		self.way_y_rel = self.way_y-self.y
+
+		self.target_angle = math.atan2(self.way_y_rel,self.way_x_rel)
 
 	def rotate(self):
 		command = Twist()
@@ -55,7 +58,7 @@ class Node():
 			if self.target_angle - self.yaw >= -0.01:
 				return True
 		elif self.target_angle > 0:
-			if self.target_angle - self.yaw <= 0.01:
+			if abs(self.target_angle - self.yaw) <= 0.01:
 				return True
 		elif self.target_angle == 0:
 			if self.target_angle + abs(self.yaw) <= 0.01:
@@ -66,9 +69,9 @@ class Node():
 	def move(self):
 		self.old_distance = self.target_distance
 		#get local distance
-		way_x_rel = self.way_x + self.x_curr
-		way_y_rel = self.way_y + self.y_curr
-		self.target_distance = math.sqrt((way_x_rel-self.x)**2+(way_y_rel-self.y)**2)
+		way_x_dist = self.way_x_rel + self.x_curr
+		way_y_dist = self.way_y_rel + self.y_curr
+		self.target_distance = math.sqrt((way_x_dist-self.x)**2+(way_y_dist-self.y)**2)
 		command = Twist()
 		rospy.loginfo("distance to target={}".format(self.target_distance))
 		#move jackal, velocity scaled by distance
@@ -77,7 +80,7 @@ class Node():
 		#check if at waypoint
 		if self.target_distance > self.old_distance:
 			self.check = self.check+1
-		if self.target_distance < 0.03 or self.check >= 5:
+		if self.target_distance < 0.01 or self.check >= 5:
 			return True
 		else: 
 			return False
@@ -93,6 +96,7 @@ class Node():
 		flag_format = False
 		flag2 = False
 		flag3 = False
+		flag_rotate = False
 		#loop to rotate and move
 		while not rospy.is_shutdown():
 			#check if have odometry data
@@ -108,8 +112,8 @@ class Node():
 					print("Waiting for Waypoint.")
 					flag2 = True
 				continue
-			#check if have a new, nonzero waypoint
-			if (self.old_way_x == self.way_x and self.old_way_y == self.way_y) or (self.way_x==0 and self.way_y==0):
+			#check if have a new waypoint
+			if (self.old_way_x == self.way_x and self.old_way_y == self.way_y):
 				if flag_format == False:
 					print("Waiting for new waypoint.\n")
 					flag_format = True
