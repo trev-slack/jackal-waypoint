@@ -14,7 +14,7 @@ class UI_Movedirection(QMainWindow):
 	def setupUi(self):
 		QMainWindow.__init__(self)
 		self.setWindowTitle("Jackal")
-		self.setMinimumSize(QSize(640, 480))   
+		self.setMinimumSize(QSize(800, 700))   
 		self.title = QLabel("Controller", self)
 		self.title.setAlignment(QtCore.Qt.AlignCenter) 
 
@@ -50,14 +50,34 @@ class UI_Movedirection(QMainWindow):
 		self.qdialspeed.setGeometry(QtCore.QRect(350, 100, 99, 99))
 		self.qdialspeed.setNotchesVisible(True)
 
-		self.label = QtWidgets.QLabel(self)
-		self.label.setObjectName("label")
-		self.label.move(365,200)
-		self.label.setText(" Speed : 1")
+		self.labelVel = QtWidgets.QLabel(self)
+		self.labelVel.setObjectName("labelVel")
+		self.labelVel.move(340,200)
+		self.labelVel.setText("Linear Speed : 1")
+		self.labelVel.adjustSize()
 		self.qdialspeed.sliderReleased.connect(self.updateLabel)
 
+		self.qdialAngspeed = QtWidgets.QDial(self)
+		self.qdialAngspeed.setObjectName("QDialAngSpeed")
+		self.qdialAngspeed.setMinimum(1)
+		self.qdialAngspeed.setMaximum(10)
+		self.qdialAngspeed.setValue(1)
+		self.qdialAngspeed.setGeometry(QtCore.QRect(350, 300, 99, 99))
+		self.qdialAngspeed.setNotchesVisible(True)
+
+		self.labelAngVel = QtWidgets.QLabel(self)
+		self.labelAngVel.setObjectName("labelAngVel")
+		self.labelAngVel.move(340,400)
+		self.labelAngVel.setText("Angular Speed : 1")
+		self.labelAngVel.adjustSize()
+		self.qdialAngspeed.sliderReleased.connect(self.updateLabelAng)
+
 	def updateLabel(self):
-		self.label.setText(' Speed : ' + str(self.qdialspeed.value()))
+		self.labelVel.setText("Linear Speed : " + str(self.qdialspeed.value()))
+		self.labelVel.adjustSize()
+	def updateLabelAng(self):
+		self.labelAngVel.setText("Angular Speed : " + str(self.qdialAngspeed.value()))
+		self.labelAngVel.adjustSize()
 
 
 class Widget(UI_Movedirection):
@@ -66,6 +86,7 @@ class Widget(UI_Movedirection):
 
 	def __init__(self):
 		self.lin = 1
+		self.ang = 1
 
 		self.setupUi()
 
@@ -75,6 +96,7 @@ class Widget(UI_Movedirection):
 		self.pushButtonRight.pressed.connect(self.moveRight)
 
 		self.qdialspeed.sliderReleased.connect(self.updateLin)
+		self.qdialAngspeed.sliderReleased.connect(self.updateAng)
 
 	def moveForward(self):
 		command = Twist()
@@ -88,16 +110,18 @@ class Widget(UI_Movedirection):
 
 	def moveLeft(self):
 		command = Twist()
-		command.angular.z = 1
+		command.angular.z = self.ang*1
 		self.pub_vel.publish(command)
 
 	def moveRight(self):
 		command = Twist()
-		command.angular.z = -1
+		command.angular.z = self.ang*-1
 		self.pub_vel.publish(command)
 
 	def updateLin(self):
 		self.lin = self.qdialspeed.value()
+	def updateAng(self):
+		self.ang = self.qdialAngspeed.value()
 
 
 
